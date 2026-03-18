@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, RefreshCw, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { formatIDR, formatCNY } from '@/lib/utils';
 
 type ProductPrice = {
   id: string;
@@ -22,12 +23,6 @@ type Product = {
   category: string;
   prices: ProductPrice[];
 };
-
-const formatIDR = (v: number | null) =>
-  v == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
-
-const formatCNY = (v: number | null) =>
-  v == null ? '—' : `¥${Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 0 })}`;
 
 const pctChange = (cur: number, prev: number | undefined) => {
   if (!prev || prev === 0) return null;

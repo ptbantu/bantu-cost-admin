@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-  Search, Download, Plus, Printer, Mail, DollarSign, 
+import {
+  Search, Download, Plus, Printer, Mail, DollarSign,
   FileText, TrendingUp, AlertCircle, CheckCircle2, Clock,
   MoreHorizontal, ChevronDown, FileSpreadsheet, File
 } from 'lucide-react';
+import { formatIDR } from '@/lib/utils';
 
 // --- Mock Data ---
 const METRICS = {
@@ -115,15 +116,6 @@ const INVOICES = [
 ];
 
 // --- Helpers ---
-const formatIDR = (value: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-};
-
 const getStatusBadge = (status: string) => {
   switch (status) {
     case 'paid':

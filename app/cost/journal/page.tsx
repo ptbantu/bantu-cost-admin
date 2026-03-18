@@ -1,15 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-  ArrowUpRight, ArrowDownRight, Wallet, Calendar, ChevronDown, 
-  Search, Download, Plus, Receipt, MoreHorizontal 
+import {
+  ArrowUpRight, ArrowDownRight, Wallet, Calendar, ChevronDown,
+  Search, Download, Plus, Receipt, MoreHorizontal
 } from 'lucide-react';
-
-// Formatting helper
-const formatIDR = (amount: number) => {
-  return `Rp ${new Intl.NumberFormat('en-US').format(amount)}`;
-};
+import { formatIDR } from '@/lib/utils';
 
 // Mock Data
 const journalEntries = [

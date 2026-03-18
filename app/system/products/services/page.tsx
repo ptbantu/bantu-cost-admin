@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, RefreshCw, Plus, X } from 'lucide-react';
+import { ProductSheet } from '@/components/product-sheet';
+import { formatIDR, formatCNY } from '@/lib/utils';
 
 type ProductPrice = {
   costPriceIdr: number;
@@ -44,12 +46,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Jemput&AntarService': 'bg-slate-100 text-slate-700',
 };
 
-const formatIDR = (v: number | null) =>
-  v == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
-
-const formatCNY = (v: number | null) =>
-  v == null ? '—' : `¥${Number(v).toLocaleString('zh-CN', { minimumFractionDigits: 0 })}`;
-
 const difficultyLabel = (d: number) => '★'.repeat(d) + '☆'.repeat(Math.max(0, 5 - d));
 
 const PAGE_SIZE = 15;
@@ -62,6 +58,8 @@ export default function ServicesPage() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Product | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -113,7 +111,7 @@ export default function ServicesPage() {
           <button onClick={fetchProducts} className="flex items-center h-8 px-3 text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50">
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />刷新
           </button>
-          <button className="flex items-center h-8 px-3 text-white bg-slate-900 rounded-md hover:bg-slate-800">
+          <button onClick={() => { setEditingProduct(null); setSheetOpen(true); }} className="flex items-center h-8 px-3 text-white bg-slate-900 rounded-md hover:bg-slate-800">
             <Plus className="w-3.5 h-3.5 mr-1.5" />新增产品
           </button>
         </div>
@@ -155,18 +153,23 @@ export default function ServicesPage() {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
                   <tr>
-                    <th className="py-2 px-4 font-medium text-slate-500 w-28">产品编码</th>
-                    <th className="py-2 px-4 font-medium text-slate-500">产品名称</th>
-                    {activeTab === 'ALL' && <th className="py-2 px-4 font-medium text-slate-500 w-24">分类</th>}
-                    <th className="py-2 px-4 font-medium text-slate-500 text-right w-36">直客价 (IDR)</th>
-                    <th className="py-2 px-4 font-medium text-slate-500 text-right w-28">直客价 (CNY)</th>
-                    <th className="py-2 px-4 font-medium text-slate-500 w-20">难度</th>
-                    <th className="py-2 px-4 font-medium text-slate-500 w-16">SLA</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 w-24">产品编码</th>
+                    <th className="py-2 px-3 font-medium text-slate-500">产品名称</th>
+                    {activeTab === 'ALL' && <th className="py-2 px-3 font-medium text-slate-500 w-20">分类</th>}
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-32">成本价 (IDR)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-28">成本价 (CNY)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-32">渠道价 (IDR)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-28">渠道价 (CNY)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-32">直客价 (IDR)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 text-right w-28">直客价 (CNY)</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 w-16">难度</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 w-14">SLA</th>
+                    <th className="py-2 px-3 font-medium text-slate-500 w-16">专家模式</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginated.length === 0 ? (
-                    <tr><td colSpan={7} className="py-10 text-center text-slate-400">暂无数据</td></tr>
+                    <tr><td colSpan={11} className="py-10 text-center text-slate-400">暂无数据</td></tr>
                   ) : paginated.map(p => {
                     const price = p.prices[0] ?? null;
                     const isSelected = selected?.id === p.id;
@@ -176,19 +179,28 @@ export default function ServicesPage() {
                         onClick={() => setSelected(isSelected ? null : p)}
                         className={`border-b border-slate-100 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-slate-50'}`}
                       >
-                        <td className="py-1.5 px-4 font-mono text-slate-500 text-[11px]">{p.productCode}</td>
-                        <td className="py-1.5 px-4 font-medium text-slate-800">{p.name}</td>
+                        <td className="py-1.5 px-3 font-mono text-slate-500 text-[11px]">{p.productCode}</td>
+                        <td className="py-1.5 px-3 font-medium text-slate-800">{p.name}</td>
                         {activeTab === 'ALL' && (
-                          <td className="py-1.5 px-4">
+                          <td className="py-1.5 px-3">
                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${CATEGORY_COLORS[p.category] ?? 'bg-slate-100 text-slate-700'}`}>
                               {CATEGORY_LABELS[p.category] ?? p.category}
                             </span>
                           </td>
                         )}
-                        <td className="py-1.5 px-4 text-right font-medium text-slate-800">{formatIDR(price?.retailPriceIdr ?? null)}</td>
-                        <td className="py-1.5 px-4 text-right text-slate-600">{formatCNY(price?.retailPriceCny ?? null)}</td>
-                        <td className="py-1.5 px-4 text-amber-400 text-[10px]">{difficultyLabel(p.difficulty)}</td>
-                        <td className="py-1.5 px-4 text-slate-500">{p.sla ? `${p.sla}天` : '—'}</td>
+                        <td className="py-1.5 px-3 text-right text-slate-500">{formatIDR(price?.costPriceIdr ?? null)}</td>
+                        <td className="py-1.5 px-3 text-right text-slate-500">{formatCNY(price?.costPriceCny ?? null)}</td>
+                        <td className="py-1.5 px-3 text-right text-slate-700">{formatIDR(price?.partnerPriceIdr ?? null)}</td>
+                        <td className="py-1.5 px-3 text-right text-slate-700">{formatCNY(price?.partnerPriceCny ?? null)}</td>
+                        <td className="py-1.5 px-3 text-right font-medium text-slate-800">{formatIDR(price?.retailPriceIdr ?? null)}</td>
+                        <td className="py-1.5 px-3 text-right font-medium text-slate-800">{formatCNY(price?.retailPriceCny ?? null)}</td>
+                        <td className="py-1.5 px-3 text-amber-400 text-[10px]">{difficultyLabel(p.difficulty)}</td>
+                        <td className="py-1.5 px-3 text-slate-500">{p.sla ? `${p.sla}天` : '—'}</td>
+                        <td className="py-1.5 px-3">
+                          {p.isExpertMode
+                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">专家</span>
+                            : <span className="text-slate-300">—</span>}
+                        </td>
                       </tr>
                     );
                   })}
@@ -231,9 +243,15 @@ export default function ServicesPage() {
           <div className="w-72 border-l border-slate-200 bg-white flex flex-col flex-shrink-0 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
               <span className="font-semibold text-slate-800 text-sm">产品详情</span>
-              <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setEditingProduct(selected); setSheetOpen(true); }}
+                  className="text-[11px] text-blue-600 hover:underline"
+                >编辑</button>
+                <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="p-4 space-y-4">
@@ -308,6 +326,13 @@ export default function ServicesPage() {
           </div>
         )}
       </div>
+
+      <ProductSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        product={editingProduct}
+        onSuccess={() => { fetchProducts(); setSelected(null); }}
+      />
     </div>
   );
 }

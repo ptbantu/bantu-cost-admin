@@ -1,14 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-  Search, ChevronDown, Plus, MessageCircle, MoreHorizontal, X 
+import {
+  Search, ChevronDown, Plus, MessageCircle, MoreHorizontal, X
 } from 'lucide-react';
-
-// Formatting helper
-const formatIDR = (amount: number) => {
-  return `Rp ${new Intl.NumberFormat('en-US').format(amount)}`;
-};
+import { formatIDR } from '@/lib/utils';
 
 // Mock Data
 const vendors = [
