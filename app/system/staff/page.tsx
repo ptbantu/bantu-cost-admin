@@ -25,6 +25,7 @@ type Employee = {
 };
 
 type Toast = { type: 'success' | 'error'; message: string };
+type SetPwdTarget = { id: string; name: string } | null;
 
 export default function StaffPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -32,10 +33,34 @@ export default function StaffPage() {
   const [activeDept, setActiveDept] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [setPwdTarget, setSetPwdTarget] = useState<SetPwdTarget>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   const showToast = (type: Toast['type'], message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSetPassword = async () => {
+    if (!setPwdTarget) return;
+    setPwdLoading(true);
+    try {
+      const res = await fetch('/api/auth/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: setPwdTarget.id, password: newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? '设置失败');
+      showToast('success', `已为 ${setPwdTarget.name} 设置密码`);
+      setSetPwdTarget(null);
+      setNewPassword('');
+    } catch (e: unknown) {
+      showToast('error', e instanceof Error ? e.message : '设置失败');
+    } finally {
+      setPwdLoading(false);
+    }
   };
 
   const fetchDepartments = useCallback(async () => {
@@ -87,6 +112,37 @@ export default function StaffPage() {
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white text-[13px] transition-all ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'}`}>
           <span>{toast.type === 'success' ? '✓' : '✕'}</span>
           <span>{toast.message}</span>
+        </div>
+      )}
+      {/* Set Password Modal */}
+      {setPwdTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-80 p-6">
+            <h2 className="text-sm font-semibold text-slate-800 mb-1">设置密码</h2>
+            <p className="text-xs text-slate-500 mb-4">{setPwdTarget.name}</p>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="至少6位"
+              className="w-full h-9 px-3 border border-slate-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-4"
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => { setSetPwdTarget(null); setNewPassword(''); }}
+                className="h-8 px-4 text-xs text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSetPassword}
+                disabled={pwdLoading || newPassword.length < 6}
+                className="h-8 px-4 text-xs text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {pwdLoading ? '保存中...' : '确认设置'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div className="flex w-full bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
@@ -236,6 +292,12 @@ export default function StaffPage() {
 
                       {/* Hover Action Menu */}
                       <div className="absolute right-10 top-1/2 -translate-y-1/2 w-28 bg-white border border-slate-200 shadow-lg rounded-md py-1 hidden group-hover:block z-50">
+                        <button
+                          onClick={() => { setSetPwdTarget({ id: emp.id, name: emp.name }); }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors"
+                        >
+                          设置密码
+                        </button>
                         <button className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors">调整角色</button>
                         <div className="h-px bg-slate-100 my-0.5 mx-2" />
                         <button className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 transition-colors">重置权限</button>
