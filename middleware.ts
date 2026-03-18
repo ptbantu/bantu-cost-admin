@@ -1,13 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const AUTH_BASE = 'https://auth.oabantuqifu.com';
+const isDev = process.env.NODE_ENV === 'development';
+const AUTH_BASE = isDev ? '' : 'https://auth.oabantuqifu.com';
+const COOKIE_DOMAIN = isDev ? undefined : '.oabantuqifu.com';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes — always allow
-  if (pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/api/') || (isDev && pathname === '/login')) {
     return NextResponse.next();
   }
 
@@ -23,9 +25,9 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, {
               ...options,
-              domain: '.oabantuqifu.com',
+              ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
               sameSite: 'lax',
-              secure: true,
+              secure: !isDev,
             })
           );
         },
@@ -36,10 +38,10 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    const currentUrl = request.nextUrl.href;
-    return NextResponse.redirect(
-      `${AUTH_BASE}/login?redirect=${encodeURIComponent(currentUrl)}`
-    );
+    const loginUrl = isDev
+      ? new URL('/login', request.url)
+      : new URL(`${AUTH_BASE}/login?redirect=${encodeURIComponent(request.nextUrl.href)}`);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;

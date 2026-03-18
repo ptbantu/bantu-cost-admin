@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+const isDev = process.env.NODE_ENV === 'development';
+
 export async function createClient() {
   const cookieStore = await cookies();
   return createServerClient(
@@ -14,9 +16,9 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, {
                 ...options,
-                domain: '.oabantuqifu.com',
+                ...(!isDev && { domain: '.oabantuqifu.com' }),
                 sameSite: 'lax',
-                secure: true,
+                secure: !isDev,
               })
             );
           } catch {}
