@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+
+# Lock files (large and auto-generated)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment files (may contain secrets)
+.env
+.env*.local
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Cache and temp files
+.cache/
+.turbo/
+.vercel/
+
+# Test coverage
+coverage/
+.nyc_output/

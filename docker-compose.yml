@@ -1,0 +1,17 @@
+services:
+  bantu-cost-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bantu-cost-admin
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - bantuqifu-sales-hub_bantuqifu-network
+
+networks:
+  bantuqifu-sales-hub_bantuqifu-network:
+    external: true
