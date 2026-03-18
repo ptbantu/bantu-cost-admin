@@ -2,18 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  Settings, Receipt, BookOpen, FileArchive, Building2, 
-  LayoutDashboard, Users, Package, Shield, Bell, Menu, 
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  Settings, Receipt, BookOpen, FileArchive, Building2,
+  LayoutDashboard, Users, Package, Shield, Bell, Menu,
   ChevronDown, Wallet, Monitor, ChevronsLeft, ChevronsRight,
-  Calculator, Truck, Zap, Bot, Workflow
+  Calculator, Truck, Zap, Bot, Workflow, LogOut
 } from "lucide-react";
+import { createClient } from '@/lib/supabase/client';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   // Auto-collapse on smaller screens (e.g., laptops < 1024px)
   useEffect(() => {
@@ -213,6 +221,13 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             <div className="h-7 w-7 rounded-full bg-slate-200 overflow-hidden border border-slate-300">
               <img src="https://picsum.photos/seed/user1/100/100" alt="User" className="w-full h-full object-cover" />
             </div>
+            <button
+              onClick={handleLogout}
+              title="退出登录"
+              className="text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 
