@@ -9,7 +9,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes — always allow
-  if (pathname.startsWith('/api/') || (isDev && pathname === '/login')) {
+  if (
+    pathname.startsWith('/api/') ||
+    pathname === '/login' ||
+    pathname.startsWith('/login')
+  ) {
     return NextResponse.next();
   }
 
