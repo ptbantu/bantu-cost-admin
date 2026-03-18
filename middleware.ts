@@ -38,9 +38,14 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
+    const redirectTarget = siteUrl
+      ? `${siteUrl}${pathname}${request.nextUrl.search}`
+      : request.nextUrl.href;
+
     const loginUrl = isDev
       ? new URL('/login', request.url)
-      : new URL(`${AUTH_BASE}/login?redirect=${encodeURIComponent(request.nextUrl.href)}`);
+      : new URL(`${AUTH_BASE}/login?redirect=${encodeURIComponent(redirectTarget)}`);
     return NextResponse.redirect(loginUrl);
   }
 
