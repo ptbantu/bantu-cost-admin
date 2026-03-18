@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createClient } from '@/lib/supabase/server';
-import bcrypt from 'bcryptjs';
 
 export async function POST(req: Request) {
   try {
@@ -13,11 +12,7 @@ export async function POST(req: Request) {
     const user = await prisma.users_auth.findUnique({ where: { id: userId } });
     if (!user) return NextResponse.json({ error: '用户不存在' }, { status: 404 });
 
-    // Hash and store in our DB
-    const passwordHash = await bcrypt.hash(password, 10);
-    await prisma.users_auth.update({ where: { id: userId }, data: { passwordHash } });
-
-    // Upsert in Supabase Auth (admin API via service role)
+    // Upsert in Supabase Auth
     const supabase = await createClient();
     const { data: existing } = await supabase.auth.admin.listUsers();
     const authUser = existing?.users?.find(u => u.email === user.email);

@@ -711,7 +711,6 @@ model users_auth {
   email              String               @unique
   name               String
   isActive           Boolean              @default(true)
-  passwordHash       String?
   wecomUserId        String?              @unique
   departmentId       String?
   createdAt          DateTime             @default(now())
