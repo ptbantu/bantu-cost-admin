@@ -204,6 +204,28 @@ model customers {
   @@index([organizationId])
 }
 
+model departments {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  wecomDeptId    Int?
+  parentId       String?
+  sortOrder      Int           @default(0)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         departments?  @relation("DepartmentTree", fields: [parentId], references: [id])
+  children       departments[] @relation("DepartmentTree")
+  users          users_auth[]
+
+  @@unique([organizationId, wecomDeptId])
+  @@index([organizationId])
+  @@index([parentId])
+  @@map("departments")
+}
+
 model dict_customer_levels {
   id          String      @id
   code        String      @unique
@@ -563,11 +585,13 @@ model organizations {
   code               String               @unique
   name               String
   site               String               @default("ID")
+  wecomCorpId        String?              @unique
   createdAt          DateTime             @default(now())
   updatedAt          DateTime
   action_logs        action_logs[]
   customer_followups customer_followups[]
   customers          customers[]
+  departments        departments[]
   interactions       interactions[]
   leads              leads[]
   opportunities      opportunities[]
@@ -644,6 +668,7 @@ model roles {
   id                 String               @id
   code               String               @unique
   name               String
+  wecomTagId         Int?
   createdAt          DateTime             @default(now())
   role_permissions   role_permissions[]
   user_organizations user_organizations[]
@@ -686,10 +711,13 @@ model users_auth {
   email              String               @unique
   name               String
   isActive           Boolean              @default(true)
+  wecomUserId        String?              @unique
+  departmentId       String?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime
   action_logs        action_logs[]
   customer_followups customer_followups[]
+  department         departments?         @relation(fields: [departmentId], references: [id])
   interactions       interactions[]
   leads              leads[]
   opportunities      opportunities[]
@@ -859,4 +887,5 @@ enum DocType {
   IMAGE
   PDF
   FILETEXT
+  FILE
 }
