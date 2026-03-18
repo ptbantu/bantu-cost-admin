@@ -39,6 +39,9 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith('/cost')) {
       return ['成本中心', getCostMenuName(pathname)];
     }
+    if (pathname.startsWith('/system/products')) {
+      return ['产品管理', getProductsMenuName(pathname)];
+    }
     if (pathname.startsWith('/system')) {
       return ['系统管理', getSystemMenuName(pathname)];
     }
@@ -46,6 +49,15 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       return ['自动化中心', getAutomationMenuName(pathname)];
     }
     return ['系统管理', '员工管理']; // Default
+  };
+
+  const getProductsMenuName = (path: string) => {
+    switch (path) {
+      case '/system/products/services': return '服务列表';
+      case '/system/products/pricing': return '价格编辑';
+      case '/system/products/rules': return '规则设置';
+      default: return '产品管理';
+    }
   };
 
   const getCostMenuName = (path: string) => {
@@ -135,7 +147,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             >
               <SubNavItem href="/system/dashboard" icon={<LayoutDashboard className="w-[14px] h-[14px]" />} label="业务看板" pathname={safePathname} isCollapsed={isCollapsed} />
               <SubNavItem href="/system/staff" icon={<Users className="w-[14px] h-[14px]" />} label="员工管理" pathname={safePathname} isCollapsed={isCollapsed} />
-              <SubNavItem href="/system/products" icon={<Package className="w-[14px] h-[14px]" />} label="产品管理" pathname={safePathname} isCollapsed={isCollapsed} />
               <SubNavItem href="/system/vendors" icon={<Truck className="w-[14px] h-[14px]" />} label="供应商库" pathname={safePathname} isCollapsed={isCollapsed} />
               <SubNavItem href="/system/dispatch" icon={<Workflow className="w-[14px] h-[14px]" />} label="派单规则引擎" pathname={safePathname} isCollapsed={isCollapsed} />
               <SubNavItem href="/system/audit" icon={<Shield className="w-[14px] h-[14px]" />} label="审计日志" pathname={safePathname} isCollapsed={isCollapsed} />
@@ -143,8 +154,23 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
             <div className="my-2 mx-4 h-px bg-slate-200" />
 
-            <NavGroup 
-              icon={<Zap className="w-[14px] h-[14px]" />} 
+            <NavGroup
+              icon={<Package className="w-[14px] h-[14px]" />}
+              label="产品管理"
+              basePath="/system/products"
+              pathname={safePathname}
+              isCollapsed={isCollapsed}
+              onExpand={() => setIsCollapsed(false)}
+            >
+              <SubNavItem href="/system/products/services" icon={<Package className="w-[14px] h-[14px]" />} label="服务列表" pathname={safePathname} isCollapsed={isCollapsed} />
+              <SubNavItem href="/system/products/pricing" icon={<Package className="w-[14px] h-[14px]" />} label="价格编辑" pathname={safePathname} isCollapsed={isCollapsed} />
+              <SubNavItem href="/system/products/rules" icon={<Package className="w-[14px] h-[14px]" />} label="规则设置" pathname={safePathname} isCollapsed={isCollapsed} />
+            </NavGroup>
+
+            <div className="my-2 mx-4 h-px bg-slate-200" />
+
+            <NavGroup
+              icon={<Zap className="w-[14px] h-[14px]" />}
               label="自动化中心" 
               basePath="/automation"
               pathname={safePathname}

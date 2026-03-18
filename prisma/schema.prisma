@@ -1,0 +1,862 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  organizationId String
+  organization   organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  productCode    String   @unique
+  name           String
+  category       String
+  description    String?
+
+  difficulty     Int      @default(1)
+  isExpertMode   Boolean  @default(false)
+  expertTag      String[] @default([])
+
+  sla            Int?
+
+  prices         ProductPrice[]
+  materials      MaterialItem[]
+  material_items      material_items[]
+  opportunity_p2_data opportunity_p2_data[]
+  opportunity_p3_data opportunity_p3_data[]
+  progress_points     progress_points[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, productCode])
+  @@index([organizationId])
+  @@map("products")
+}
+
+model ProductPrice {
+  id             String   @id @default(cuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  costPriceIdr   Float
+  costPriceCny   Float
+  partnerPriceIdr Float?
+  partnerPriceCny Float?
+  retailPriceIdr Float
+  retailPriceCny Float?
+
+  isCurrent      Boolean  @default(true)
+  effectiveDate  DateTime @default(now())
+  expiryDate     DateTime?
+
+  createdAt      DateTime @default(now())
+
+  @@index([productId])
+  @@index([isCurrent])
+  @@map("product_prices")
+}
+
+model MaterialItem {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name        String
+  nameId      String?
+  isRequired  Boolean  @default(true)
+  docType     DocType  @default(IMAGE)
+  description String?
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productId])
+  @@map("material_items_template")
+}
+
+model action_log_attachments {
+  id          String      @id
+  actionLogId String
+  fileName    String
+  fileSize    Int
+  fileUrl     String
+  uploadedAt  DateTime    @default(now())
+  action_logs action_logs @relation(fields: [actionLogId], references: [id], onDelete: Cascade)
+}
+
+model action_logs {
+  id                     String                   @id
+  organizationId         String
+  opportunityId          String
+  operatorId             String
+  stageId                String?
+  actionType             ActionType
+  actionLabel            String
+  remark                 String?
+  timestamp              DateTime                 @default(now())
+  action_log_attachments action_log_attachments[]
+  users_auth             users_auth               @relation(fields: [operatorId], references: [id])
+  opportunities          opportunities            @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organizations          organizations            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
+  @@index([opportunityId])
+  @@index([organizationId])
+  @@index([timestamp])
+}
+
+model app_settings {
+  id                      String   @id @default("singleton")
+  email_account           String   @default("admin@bantuqifu.com")
+  email_password          String?
+  email_filter            String   @default("@imigrasi.go.id")
+  email_frequency_minutes Int      @default(5)
+  wecom_webhook_url       String?
+  voice_bot_api_key       String?
+  voice_call_time         String   @default("working-hours")
+  voice_receiver          String   @default("wangshuo")
+  updatedAt               DateTime
+}
+
+model customer_contacts {
+  id          String    @id
+  customerId  String
+  contactName String
+  position    String?
+  phone       String?
+  email       String?
+  wechat      String?
+  isPrimary   Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  customers   customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model customer_followup_attachments {
+  id                 String             @id
+  followupId         String
+  fileName           String
+  fileSize           Int
+  fileUrl            String
+  uploadedAt         DateTime           @default(now())
+  customer_followups customer_followups @relation(fields: [followupId], references: [id], onDelete: Cascade)
+}
+
+model customer_followups {
+  id                            String                          @id
+  organizationId                String
+  customerId                    String
+  operatorId                    String?
+  followupType                  String                          @default("general")
+  content                       String
+  nextAction                    String?
+  nextActionDate                DateTime?
+  createdAt                     DateTime                        @default(now())
+  updatedAt                     DateTime
+  customer_followup_attachments customer_followup_attachments[]
+  customers                     customers                       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  users_auth                    users_auth?                     @relation(fields: [operatorId], references: [id])
+  organizations                 organizations                   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([operatorId])
+  @@index([organizationId])
+}
+
+model customers {
+  id                           String                         @id
+  organizationId               String
+  customerId                   String                         @unique
+  customerName                 String
+  passportNo                   String?
+  phone                        String?
+  email                        String?
+  wechat                       String?
+  level                        CustomerLevel                  @default(L5)
+  levelDictId                  String?
+  industryId                   String?
+  isLocked                     Boolean                        @default(false)
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime
+  customerCode                 String?                        @unique
+  customer_contacts            customer_contacts[]
+  customer_followups           customer_followups[]
+  dict_industries              dict_industries?               @relation(fields: [industryId], references: [id])
+  dict_customer_levels         dict_customer_levels?          @relation(fields: [levelDictId], references: [id])
+  organizations                organizations                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domestic_entity_associations domestic_entity_associations[]
+  foreign_company_entities     foreign_company_entities[]
+  interactions                 interactions[]
+  leads                        leads[]
+  opportunities                opportunities[]
+
+  @@unique([organizationId, customerId])
+  @@index([customerCode])
+  @@index([industryId])
+  @@index([levelDictId])
+  @@index([organizationId])
+}
+
+model dict_customer_levels {
+  id          String      @id
+  code        String      @unique
+  nameZh      String
+  nameId      String?
+  nameEn      String?
+  weight      Int         @default(1)
+  description String?
+  colorClass  String?
+  sortOrder   Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime
+  customers   customers[]
+
+  @@index([sortOrder])
+}
+
+model dict_industries {
+  id                    String            @id
+  code                  String            @unique
+  nameZh                String
+  nameId                String?
+  nameEn                String?
+  parentId              String?
+  sortOrder             Int               @default(0)
+  isActive              Boolean           @default(true)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime
+  customers             customers[]
+  dict_industries       dict_industries?  @relation("dict_industriesTodict_industries", fields: [parentId], references: [id])
+  other_dict_industries dict_industries[] @relation("dict_industriesTodict_industries")
+
+  @@index([parentId])
+  @@index([sortOrder])
+}
+
+model domestic_entities {
+  id                           String                         @id
+  creditCode                   String                         @unique
+  companyName                  String
+  legalPerson                  String?
+  regCapital                   String?
+  businessScope                String?
+  status                       ChinaEntityStatus
+  industry                     String?
+  foundedDate                  DateTime?
+  registrationLocation         String?
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime
+  domestic_entity_associations domestic_entity_associations[]
+}
+
+model domestic_entity_associations {
+  id                String            @id
+  customerId        String
+  chinaEntityId     String
+  businessMatch     String            @default("medium")
+  riskLevel         String            @default("medium")
+  notes             String?
+  associatedAt      DateTime          @default(now())
+  domestic_entities domestic_entities @relation(fields: [chinaEntityId], references: [id])
+  customers         customers         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, chinaEntityId])
+}
+
+model email_process_logs {
+  id            String    @id
+  messageId     String
+  pdfKey        String
+  pdfFilename   String
+  status        String    @default("PENDING")
+  extractedData Json?
+  errorMessage  String?
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime
+
+  @@index([createdAt])
+  @@index([messageId])
+  @@index([status])
+}
+
+model expense_items {
+  id                  String              @id
+  p8DataId            String
+  description         String
+  amount              Float
+  category            String              @default("other")
+  receiptUrl          String?
+  receiptFileName     String?
+  createdBy           String
+  createdAt           DateTime            @default(now())
+  approvedBy          String?
+  approvedAt          DateTime?
+  opportunity_p8_data opportunity_p8_data @relation(fields: [p8DataId], references: [id], onDelete: Cascade)
+}
+
+model foreign_company_entities {
+  id                 String    @id
+  customerId         String
+  companyName        String
+  country            String
+  registrationNumber String?
+  legalPerson        String?
+  regCapital         String?
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime
+  customers          customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model interaction_attachments {
+  id            String       @id
+  interactionId String
+  fileName      String
+  fileUrl       String
+  fileSize      Int
+  createdAt     DateTime     @default(now())
+  interactions  interactions @relation(fields: [interactionId], references: [id], onDelete: Cascade)
+}
+
+model interactions {
+  id                      String                    @id
+  organizationId          String
+  customerId              String
+  leadId                  String?
+  opportunityId           String?
+  operatorId              String?
+  type                    InteractionType           @default(NOTE)
+  content                 String
+  nextAction              String?
+  nextActionDate          DateTime?
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  interaction_attachments interaction_attachments[]
+  customers               customers                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  leads                   leads?                    @relation(fields: [leadId], references: [id])
+  users_auth              users_auth?               @relation(fields: [operatorId], references: [id])
+  opportunities           opportunities?            @relation(fields: [opportunityId], references: [id])
+  organizations           organizations             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([operatorId])
+  @@index([opportunityId])
+  @@index([organizationId])
+}
+
+model leads {
+  id                     String         @id
+  organizationId         String
+  leadCode               String         @unique
+  wechatName             String
+  phone                  String?
+  source                 LeadSource
+  category               LeadCategory?
+  budgetMin              Float?
+  budgetMax              Float?
+  budgetCurrency         String         @default("CNY")
+  urgency                LeadUrgency    @default(MEDIUM)
+  initialIntent          String
+  assigneeId             String?
+  nextFollowDate         DateTime?
+  lastActionAt           DateTime?
+  status                 LeadStatus     @default(new)
+  discardedAt            DateTime?
+  discardReason          DiscardReason?
+  discardedById          String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime
+  notes                  String?
+  convertedOpportunityId String?        @unique
+  customerId             String?
+  wechatGroupId          Int?
+  wechatGroupName        String?
+  interactions           interactions[]
+  users_auth             users_auth?    @relation(fields: [assigneeId], references: [id])
+  customers              customers?     @relation(fields: [customerId], references: [id])
+  organizations          organizations  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunities          opportunities?
+
+  @@unique([organizationId, leadCode])
+  @@index([assigneeId])
+  @@index([discardedAt])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model material_items {
+  id                  String              @id
+  p6DataId            String
+  productId           String?
+  name                String
+  requirement         String?
+  status              String              @default("missing")
+  fileUrl             String?
+  fileName            String?
+  fileSize            Int?
+  ocrStatus           String              @default("pending")
+  rejectionReason     String?
+  uploadedAt          DateTime?
+  uploadedBy          String?
+  approvedAt          DateTime?
+  approvedBy          String?
+  opportunity_p6_data opportunity_p6_data @relation(fields: [p6DataId], references: [id], onDelete: Cascade)
+  products            Product?            @relation(fields: [productId], references: [id])
+}
+
+model opportunities {
+  id                  String                @id
+  organizationId      String
+  opportunityCode     String                @unique
+  customerId          String
+  stageId             String                @default("P1")
+  status              OpportunityStatus     @default(active)
+  serviceType         ServiceType
+  serviceTypeLabel    String
+  estimatedAmount     Float
+  currency            String                @default("IDR")
+  requirements        String?
+  notes               String?
+  destination         String?
+  travelDate          DateTime?
+  assigneeId          String
+  wechatGroupId       Int?
+  wechatGroupName     String?
+  pinnedByUsers       String[]              @default([])
+  expectedCloseDate   DateTime?
+  actualCloseDate     DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  convertedFromLeadId String?               @unique
+  action_logs         action_logs[]
+  interactions        interactions[]
+  users_auth          users_auth            @relation(fields: [assigneeId], references: [id])
+  leads               leads?                @relation(fields: [convertedFromLeadId], references: [id])
+  customers           customers             @relation(fields: [customerId], references: [id])
+  organizations       organizations         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity_p2_data opportunity_p2_data[]
+  opportunity_p3_data opportunity_p3_data[]
+  opportunity_p4_data opportunity_p4_data?
+  opportunity_p5_data opportunity_p5_data?
+  opportunity_p6_data opportunity_p6_data?
+  opportunity_p7_data opportunity_p7_data?
+  opportunity_p8_data opportunity_p8_data?
+
+  @@unique([organizationId, opportunityCode])
+  @@index([assigneeId])
+  @@index([customerId])
+  @@index([organizationId])
+  @@index([stageId])
+}
+
+model opportunity_p2_data {
+  id            String        @id
+  opportunityId String
+  productId     String
+  cycle         String?
+  opportunities opportunities @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  products      Product       @relation(fields: [productId], references: [id])
+}
+
+model opportunity_p3_data {
+  id               String        @id
+  opportunityId    String
+  productId        String
+  quantity         Int           @default(1)
+  lockedPrice      Float
+  currency         String
+  recommendedPrice Float?
+  costFloor        Float?
+  profitMargin     Float?
+  approvalStatus   String        @default("auto-approved")
+  approvedAt       DateTime?
+  approvedById     String?
+  opportunities    opportunities @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  products         Product       @relation(fields: [productId], references: [id])
+}
+
+model opportunity_p4_data {
+  id              String        @id
+  opportunityId   String        @unique
+  contractFileUrl String?
+  contractStatus  String        @default("pending")
+  uploadedAt      DateTime?
+  notes           String?
+  opportunities   opportunities @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model opportunity_p5_data {
+  id                String        @id
+  opportunityId     String        @unique
+  bankAccount       String?
+  bankName          String?
+  accountHolder     String?
+  swiftCode         String?
+  dueAmount         Float
+  receivedAmount    Float         @default(0)
+  receiptFileUrl    String?
+  receiptFileName   String?
+  receiptUploadedAt DateTime?
+  receiptUploadedBy String?
+  paymentStatus     String        @default("pending")
+  rejectionReason   String?
+  confirmedAt       DateTime?
+  confirmedById     String?
+  opportunities     opportunities @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model opportunity_p6_data {
+  id             String           @id
+  opportunityId  String           @unique
+  lastUpdatedAt  DateTime?
+  material_items material_items[]
+  opportunities  opportunities    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model opportunity_p7_data {
+  id                String            @id
+  opportunityId     String            @unique
+  finalDocumentUrl  String?
+  finalDocumentName String?
+  deliveryStatus    String            @default("in_transit")
+  deliveredAt       DateTime?
+  notes             String?
+  completedAt       DateTime?
+  opportunities     opportunities     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  progress_points   progress_points[]
+}
+
+model opportunity_p8_data {
+  id                String          @id
+  opportunityId     String          @unique
+  totalAmount       Float
+  paidAmount        Float           @default(0)
+  balanceDue        Float
+  balanceReceiptUrl String?
+  balanceReceivedAt DateTime?
+  balanceStatus     String          @default("pending")
+  totalRefund       Float           @default(0)
+  totalExpense      Float           @default(0)
+  netBalance        Float
+  profitMargin      Float?
+  settledAt         DateTime?
+  settledById       String?
+  archived          Boolean         @default(false)
+  notes             String?
+  expense_items     expense_items[]
+  opportunities     opportunities   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  refund_items      refund_items[]
+}
+
+model organizations {
+  id                 String               @id
+  code               String               @unique
+  name               String
+  site               String               @default("ID")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  action_logs        action_logs[]
+  customer_followups customer_followups[]
+  customers          customers[]
+  interactions       interactions[]
+  leads              leads[]
+  opportunities      opportunities[]
+  products           Product[]
+  user_organizations user_organizations[]
+}
+
+model permissions {
+  id               String             @id
+  code             String             @unique
+  name             String
+  module           String
+  description      String?
+  createdAt        DateTime           @default(now())
+  role_permissions role_permissions[]
+}
+
+model progress_points {
+  id                  String              @id
+  p7DataId            String
+  productId           String?
+  label               String
+  status              String              @default("pending")
+  timestamp           DateTime?
+  opportunity_p7_data opportunity_p7_data @relation(fields: [p7DataId], references: [id], onDelete: Cascade)
+  products            Product?            @relation(fields: [productId], references: [id])
+}
+
+model refund_items {
+  id                  String              @id
+  p8DataId            String
+  serviceId           String
+  serviceName         String
+  originalAmount      Float
+  refundedAmount      Float
+  reason              String
+  refundedAt          DateTime?
+  refundedBy          String?
+  receiptUrl          String?
+  opportunity_p8_data opportunity_p8_data @relation(fields: [p8DataId], references: [id], onDelete: Cascade)
+}
+
+model reminders {
+  id              String       @id
+  visa_id         String
+  customer_name   String
+  passport_no     String
+  visa_type       String
+  expiry_date     DateTime
+  days_left       Int
+  stage           String
+  status          String
+  last_sent_at    DateTime?
+  retry_count     Int          @default(0)
+  is_acknowledged Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime
+  visa_records    visa_records @relation(fields: [visa_id], references: [id], onDelete: Cascade)
+
+  @@index([days_left, status])
+  @@index([visa_id])
+}
+
+model role_permissions {
+  roleId       String
+  permissionId String
+  permissions  permissions @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  roles        roles       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model roles {
+  id                 String               @id
+  code               String               @unique
+  name               String
+  createdAt          DateTime             @default(now())
+  role_permissions   role_permissions[]
+  user_organizations user_organizations[]
+}
+
+model system_counters {
+  id        String   @id
+  sequence  Int      @default(0)
+  updatedAt DateTime
+}
+
+model system_logs {
+  id        String   @id
+  timestamp DateTime @default(now())
+  level     String
+  module    String
+  message   String
+  user      String?
+  metadata  Json?
+
+  @@index([module])
+  @@index([timestamp, level])
+}
+
+model user_organizations {
+  userId         String
+  organizationId String
+  roleId         String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  organizations  organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  roles          roles         @relation(fields: [roleId], references: [id])
+  users_auth     users_auth    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, organizationId])
+}
+
+model users_auth {
+  id                 String               @id
+  email              String               @unique
+  name               String
+  isActive           Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  action_logs        action_logs[]
+  customer_followups customer_followups[]
+  interactions       interactions[]
+  leads              leads[]
+  opportunities      opportunities[]
+  user_organizations user_organizations[]
+}
+
+model visa_customers {
+  id               String         @id
+  passport_no      String         @unique
+  name             String
+  phone            String?
+  whatsapp         String?
+  place_of_birth   String?
+  passport_expiry  DateTime?
+  nationality      String?
+  gender           String?
+  address          String?
+  activity         String?
+  occupation       String?
+  guarantor        String?
+  ministry_name    String?
+  issuing_office   String?
+  issuing_date     DateTime?
+  issuing_location String?
+  office_address   String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  visa_records     visa_records[]
+
+  @@index([passport_no])
+}
+
+model visa_records {
+  id               String         @id
+  customerId       String
+  visaTypeCode     String
+  passport_no      String
+  expiry_date      DateTime
+  is_urgent        Boolean        @default(false)
+  reminder_enabled Boolean        @default(false)
+  entry_date       DateTime?
+  port_of_entry    String?
+  file_url         String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  reminders        reminders[]
+  visa_customers   visa_customers @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  visa_types       visa_types     @relation(fields: [visaTypeCode], references: [code])
+
+  @@unique([customerId, visaTypeCode, expiry_date])
+  @@index([customerId])
+  @@index([expiry_date])
+  @@index([visaTypeCode])
+}
+
+model visa_types {
+  id            String         @id
+  code          String         @unique
+  nameZh        String
+  nameId        String
+  requiresEntry Boolean        @default(false)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime
+  visa_records  visa_records[]
+
+  @@index([code])
+  @@index([isActive])
+}
+
+model wechat_group_sequences {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+}
+
+enum ActionType {
+  FORM
+  MATCH
+  STAGE_CHANGE
+  NOTE
+  QUOTE
+  CREATE
+}
+
+enum ChinaEntityStatus {
+  OPERATING
+  REVOKED
+  CANCELLED
+}
+
+enum CustomerLevel {
+  L2
+  L3
+  L4
+  L5
+  L6
+}
+
+enum DiscardReason {
+  NO_CONTACT
+  MISMATCH_NEEDS
+  LIMITED_SALES_CAPABILITY
+  OTHER
+  RETURN_TO_POOL
+}
+
+enum InteractionType {
+  NOTE
+  CALL
+  VISIT
+  MEETING
+  EMAIL
+  STAGE_CHANGE
+  SYSTEM
+}
+
+enum LeadCategory {
+  VISA
+  COMPANY_REGISTRATION
+  FINANCIAL_SERVICES
+  PERMIT_SERVICES
+  TAX_SERVICES
+}
+
+enum LeadSource {
+  wechat
+  referral
+  facebook
+  website
+  cold_outreach
+}
+
+enum LeadStatus {
+  new
+  contacted
+  no_interest
+  ready_for_opportunity
+  discarded
+  public_pool
+  converted
+}
+
+enum LeadUrgency {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum OpportunityStatus {
+  active
+  won
+  lost
+}
+
+enum ServiceType {
+  VISA
+  COMPANY_REGISTRATION
+  FACTORY_SETUP
+  TAX_SERVICES
+  PERMIT_SERVICES
+  FINANCIAL_SERVICES
+  IMMIGRATION
+  OTHER
+}
+
+enum DocType {
+  IMAGE
+  PDF
+  FILETEXT
+}
