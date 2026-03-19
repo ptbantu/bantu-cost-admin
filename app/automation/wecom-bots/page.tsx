@@ -45,7 +45,8 @@ export default function WecomBotsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/wecom/bots');
-      setBots(await res.json());
+      const data = await res.json();
+      setBots(Array.isArray(data) ? data : []);
     } catch {
       showToast('加载失败', 'error');
     } finally {

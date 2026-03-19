@@ -120,7 +120,7 @@ export default function VendorsPage() {
     try {
       const res = await fetch('/api/vendors');
       const data = await res.json();
-      setVendors(data);
+      setVendors(Array.isArray(data) ? data : []);
     } catch {
       showToast('加载失败', 'error');
     } finally {
