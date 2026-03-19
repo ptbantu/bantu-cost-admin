@@ -227,7 +227,7 @@ export default function ReconciliationPage() {
       if (typeFilter !== 'all') params.set('type', typeFilter);
       const res = await fetch(`/api/reconciliation?${params}`);
       const json = await res.json();
-      setData(json);
+      if (!json.error) setData(json);
     } finally {
       setLoading(false);
     }
