@@ -75,10 +75,6 @@ export async function GET(req: Request) {
       staffList,
       departments,
       deliveryDetails,
-      // Monthly trend: last 6 months won opps
-      monthlyTrend,
-      // Avg delivery cycle: p1 created -> p7 completedAt
-      avgDeliveryCycle,
     ] = await Promise.all([
       prisma.leads.count({ where: leadWhere }),
       prisma.leads.count({ where: prevLeadWhere }),
@@ -143,29 +139,39 @@ export async function GET(req: Request) {
         orderBy: { opportunities: { createdAt: 'desc' } },
         take: 20,
       }),
-      // Monthly won amount trend (last 6 months)
-      prisma.$queryRaw<{ month: string; amount: number; count: number }[]>`
-        SELECT
-          TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as month,
-          COALESCE(SUM("estimatedAmount"), 0)::float as amount,
-          COUNT(*)::int as count
-        FROM opportunities
-        WHERE "organizationId" = ${ORG_ID}
-          AND status = 'won'
-          AND "createdAt" >= NOW() - INTERVAL '6 months'
-          ${assigneeId ? prisma.$queryRaw`AND "assigneeId" = ${assigneeId}` : prisma.$queryRaw``}
-        GROUP BY DATE_TRUNC('month', "createdAt")
-        ORDER BY month ASC
-      `,
-      // Avg delivery cycle in days
-      prisma.$queryRaw<{ avg_days: number }[]>`
-        SELECT AVG(EXTRACT(EPOCH FROM (p7."completedAt" - o."createdAt")) / 86400)::float as avg_days
-        FROM opportunity_p7_data p7
-        JOIN opportunities o ON o.id = p7."opportunityId"
-        WHERE o."organizationId" = ${ORG_ID}
-          AND p7."completedAt" IS NOT NULL
-          ${assigneeId ? prisma.$queryRaw`AND o."assigneeId" = ${assigneeId}` : prisma.$queryRaw``}
-      `,
+    ]);
+
+    const [monthlyTrend, avgDeliveryCycle] = await Promise.all([
+      assigneeId
+        ? prisma.$queryRaw<{ month: string; amount: number; count: number }[]>`
+            SELECT TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as month,
+              COALESCE(SUM("estimatedAmount"), 0)::float as amount,
+              COUNT(*)::int as count
+            FROM opportunities
+            WHERE "organizationId" = ${ORG_ID} AND status = 'won'
+              AND "createdAt" >= NOW() - INTERVAL '6 months'
+              AND "assigneeId" = ${assigneeId}
+            GROUP BY DATE_TRUNC('month', "createdAt") ORDER BY month ASC`
+        : prisma.$queryRaw<{ month: string; amount: number; count: number }[]>`
+            SELECT TO_CHAR(DATE_TRUNC('month', "createdAt"), 'YYYY-MM') as month,
+              COALESCE(SUM("estimatedAmount"), 0)::float as amount,
+              COUNT(*)::int as count
+            FROM opportunities
+            WHERE "organizationId" = ${ORG_ID} AND status = 'won'
+              AND "createdAt" >= NOW() - INTERVAL '6 months'
+            GROUP BY DATE_TRUNC('month', "createdAt") ORDER BY month ASC`,
+      assigneeId
+        ? prisma.$queryRaw<{ avg_days: number }[]>`
+            SELECT AVG(EXTRACT(EPOCH FROM (p7."completedAt" - o."createdAt")) / 86400)::float as avg_days
+            FROM opportunity_p7_data p7
+            JOIN opportunities o ON o.id = p7."opportunityId"
+            WHERE o."organizationId" = ${ORG_ID} AND p7."completedAt" IS NOT NULL
+              AND o."assigneeId" = ${assigneeId}`
+        : prisma.$queryRaw<{ avg_days: number }[]>`
+            SELECT AVG(EXTRACT(EPOCH FROM (p7."completedAt" - o."createdAt")) / 86400)::float as avg_days
+            FROM opportunity_p7_data p7
+            JOIN opportunities o ON o.id = p7."opportunityId"
+            WHERE o."organizationId" = ${ORG_ID} AND p7."completedAt" IS NOT NULL`,
     ]);
 
     const statusMap = Object.fromEntries(leadsByStatus.map(r => [r.status, r._count]));

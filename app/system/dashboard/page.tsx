@@ -385,9 +385,9 @@ export default function DashboardPage() {
           <p className="text-sm font-medium text-slate-700 mb-4">交付进度明细</p>
           {loading
             ? <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
-            : data?.deliveryDetails.length === 0
+            : !data || data.deliveryDetails.length === 0
               ? <p className="text-xs text-slate-400 text-center py-8">暂无交付数据</p>
-              : <DeliveryTable rows={data!.deliveryDetails} />}
+              : <DeliveryTable rows={data.deliveryDetails} />}
         </div>
       </div>
 
