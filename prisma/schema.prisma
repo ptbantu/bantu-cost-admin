@@ -29,6 +29,7 @@ model Product {
   opportunity_p2_data opportunity_p2_data[]
   opportunity_p3_data opportunity_p3_data[]
   progress_points     progress_points[]
+  vendor_products     vendor_products[]
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -322,6 +323,10 @@ model expense_items {
   createdAt           DateTime            @default(now())
   approvedBy          String?
   approvedAt          DateTime?
+  vendorId            String?
+  paymentStatus       String              @default("UNPAID")
+  paymentDate         DateTime?
+  vendors             vendors?            @relation(fields: [vendorId], references: [id])
   opportunity_p8_data opportunity_p8_data @relation(fields: [p8DataId], references: [id], onDelete: Cascade)
 }
 
@@ -597,6 +602,7 @@ model organizations {
   opportunities      opportunities[]
   products           Product[]
   user_organizations user_organizations[]
+  vendors            vendors[]
 }
 
 model permissions {
@@ -791,6 +797,60 @@ model visa_types {
 model wechat_group_sequences {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+model vendors {
+  id             String       @id @default(cuid())
+  organizationId String
+  vendorCode     String       @unique
+  vendorName     String
+  category       String?
+  contactName    String?
+  phone          String?
+  email          String?
+  wechat         String?
+  bankName       String?
+  bankAccount    String?
+  accountHolder  String?
+  taxId          String?
+  status         VendorStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organizations   organizations     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendor_products vendor_products[]
+  expense_items   expense_items[]
+
+  @@unique([organizationId, vendorCode])
+  @@index([organizationId])
+  @@index([category])
+  @@map("vendors")
+}
+
+model vendor_products {
+  id          String   @id @default(cuid())
+  vendorId    String
+  productId   String
+  costPrice   Float?
+  currency    String   @default("IDR")
+  serviceSla  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendors  vendors @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  products Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, productId])
+  @@index([productId])
+  @@map("vendor_products")
 }
 
 enum ActionType {
