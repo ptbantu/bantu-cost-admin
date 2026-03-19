@@ -807,6 +807,8 @@ model wecom_bots {
   webhookUrl     String
   isActive       Boolean       @default(true)
   description    String?
+  businessModule String?
+  triggerScenes  String[]      @default([])
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 

@@ -18,7 +18,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { name, webhookUrl, description, action, id } = await req.json();
+    const { name, webhookUrl, description, businessModule, triggerScenes, action, id } = await req.json();
 
     // Test push action
     if (action === 'test') {
@@ -46,6 +46,8 @@ export async function POST(req: Request) {
         name,
         webhookUrl,
         description: description ?? null,
+        businessModule: businessModule ?? null,
+        triggerScenes: triggerScenes ?? [],
       },
     });
     return NextResponse.json(bot, { status: 201 });
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { id, name, webhookUrl, description, isActive } = await req.json();
+    const { id, name, webhookUrl, description, isActive, businessModule, triggerScenes } = await req.json();
     const bot = await prisma.wecom_bots.update({
       where: { id },
       data: {
@@ -65,6 +67,8 @@ export async function PUT(req: Request) {
         webhookUrl,
         description: description ?? null,
         isActive: isActive ?? undefined,
+        businessModule: businessModule ?? null,
+        triggerScenes: triggerScenes ?? undefined,
       },
     });
     return NextResponse.json(bot);

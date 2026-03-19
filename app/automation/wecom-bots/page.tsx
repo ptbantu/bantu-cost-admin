@@ -12,10 +12,39 @@ interface WecomBot {
   webhookUrl: string;
   isActive: boolean;
   description: string | null;
+  businessModule: string | null;
+  triggerScenes: string[];
   createdAt: string;
 }
 
-const emptyForm = { name: '', webhookUrl: '', description: '' };
+const BUSINESS_MODULES = [
+  { value: 'VISA', label: '签证业务' },
+  { value: 'COMPANY', label: '公司注册' },
+  { value: 'FINANCE', label: '财务结算' },
+  { value: 'DELIVERY', label: '交付跟进' },
+  { value: 'GENERAL', label: '通用' },
+];
+
+const TRIGGER_SCENES = [
+  { value: 'STAGE_CHANGE', label: '阶段变更提醒' },
+  { value: 'OVERDUE', label: '逾期预警' },
+  { value: 'NEW_LEAD', label: '新线索指派' },
+  { value: 'APPROVAL', label: '审批结果通知' },
+  { value: 'PAYMENT', label: 'P8 结算申请' },
+  { value: 'EXPENSE', label: '费用超支预警' },
+  { value: 'VISA_EXPIRY', label: '证件到期提醒' },
+  { value: 'PROGRESS', label: '进度更新' },
+];
+
+const moduleStyle: Record<string, string> = {
+  VISA: 'bg-blue-50 text-blue-700 border-blue-200/60',
+  COMPANY: 'bg-purple-50 text-purple-700 border-purple-200/60',
+  FINANCE: 'bg-amber-50 text-amber-700 border-amber-200/60',
+  DELIVERY: 'bg-emerald-50 text-emerald-700 border-emerald-200/60',
+  GENERAL: 'bg-slate-100 text-slate-600 border-slate-200/60',
+};
+
+const emptyForm = { name: '', webhookUrl: '', description: '', businessModule: '', triggerScenes: [] as string[], isActive: true };
 
 function maskUrl(url: string) {
   try {
@@ -92,7 +121,14 @@ export default function WecomBotsPage() {
   const openAdd = () => { setEditingBot(null); setForm(emptyForm); setIsSheetOpen(true); };
   const openEdit = (bot: WecomBot) => {
     setEditingBot(bot);
-    setForm({ name: bot.name, webhookUrl: bot.webhookUrl, description: bot.description ?? '' });
+    setForm({
+      name: bot.name,
+      webhookUrl: bot.webhookUrl,
+      description: bot.description ?? '',
+      businessModule: bot.businessModule ?? '',
+      triggerScenes: bot.triggerScenes ?? [],
+      isActive: bot.isActive,
+    });
     setOpenMenuId(null);
     setIsSheetOpen(true);
   };
@@ -123,10 +159,19 @@ export default function WecomBotsPage() {
       await fetch('/api/wecom/bots', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: bot.id, name: bot.name, webhookUrl: bot.webhookUrl, description: bot.description, isActive: !bot.isActive }),
+        body: JSON.stringify({ id: bot.id, name: bot.name, webhookUrl: bot.webhookUrl, description: bot.description, businessModule: bot.businessModule, triggerScenes: bot.triggerScenes, isActive: !bot.isActive }),
       });
       fetchBots();
     } catch { showToast('操作失败', 'error'); }
+  };
+
+  const toggleScene = (scene: string) => {
+    setForm(f => ({
+      ...f,
+      triggerScenes: f.triggerScenes.includes(scene)
+        ? f.triggerScenes.filter(s => s !== scene)
+        : [...f.triggerScenes, scene],
+    }));
   };
 
   const handleDelete = async (id: string) => {
@@ -272,9 +317,23 @@ export default function WecomBotsPage() {
                   </div>
                 </div>
 
-                {/* Description */}
-                <div className="px-4 pb-2 min-h-[28px]">
+                {/* Description + Module + Scenes */}
+                <div className="px-4 pb-2 space-y-1.5">
+                  {bot.businessModule && (
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${moduleStyle[bot.businessModule] ?? 'bg-slate-100 text-slate-600 border-slate-200/60'}`}>
+                      {BUSINESS_MODULES.find(m => m.value === bot.businessModule)?.label ?? bot.businessModule}
+                    </span>
+                  )}
                   <p className="text-slate-500 text-[11px] line-clamp-2">{bot.description || <span className="text-slate-300 italic">暂无备注</span>}</p>
+                  {bot.triggerScenes.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {bot.triggerScenes.map(s => (
+                        <span key={s} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-500 border border-slate-200/60">
+                          {TRIGGER_SCENES.find(t => t.value === s)?.label ?? s}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Webhook URL */}
@@ -358,6 +417,51 @@ export default function WecomBotsPage() {
                   className="w-full h-8 px-2.5 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-[12px] font-mono"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">在企业微信群聊 → 群机器人 → 添加机器人 中获取</p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-500 mb-1.5">业务归属</label>
+                <div className="relative">
+                  <select
+                    value={form.businessModule}
+                    onChange={e => setForm(f => ({ ...f, businessModule: e.target.value }))}
+                    className="w-full h-8 pl-2.5 pr-8 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-[12px] appearance-none bg-white"
+                  >
+                    <option value="">请选择业务模块</option>
+                    {BUSINESS_MODULES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <svg className="absolute right-2.5 top-2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-500 mb-2">订阅场景</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {TRIGGER_SCENES.map(scene => (
+                    <label key={scene.value} className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={form.triggerScenes.includes(scene.value)}
+                        onChange={() => toggleScene(scene.value)}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-[11px] text-slate-600 group-hover:text-slate-900 transition-colors">{scene.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-500 mb-1.5">启用状态</label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div
+                    onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
+                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${form.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-[12px] text-slate-600">{form.isActive ? '启用' : '停用'}</span>
+                </label>
               </div>
 
               <div>
