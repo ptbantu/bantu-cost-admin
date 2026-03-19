@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Upload, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
-
-const ORG_ID = 'org_bantu_id';
+import { Upload, Trash2, ChevronLeft, ChevronRight, X, TrendingUp, TrendingDown, ArrowLeftRight } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Transaction {
@@ -18,6 +16,7 @@ interface Transaction {
   balance: number | null;
   reference: string | null;
   importBatchId: string | null;
+  uploader: { name: string } | null;
 }
 
 interface ImportBatch {
@@ -27,6 +26,15 @@ interface ImportBatch {
   fileName: string;
   rowCount: number;
   createdAt: string;
+  uploader: { name: string } | null;
+}
+
+interface Summary {
+  totalIncome: number;
+  totalExpense: number;
+  netFlow: number;
+  incomeCount: number;
+  expenseCount: number;
 }
 
 interface ApiResponse {
@@ -35,6 +43,7 @@ interface ApiResponse {
   batches: ImportBatch[];
   page: number;
   pageSize: number;
+  summary: Summary;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -45,6 +54,53 @@ function fmtAmount(amount: number, currency: string) {
 
 function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function fmtAmountShort(amount: number, currency: string) {
+  const prefix = currency === 'CNY' ? '¥' : 'Rp';
+  if (amount >= 1_000_000_000) return `${prefix} ${(amount / 1_000_000_000).toFixed(1)}B`;
+  if (amount >= 1_000_000) return `${prefix} ${(amount / 1_000_000).toFixed(1)}M`;
+  return `${prefix} ${amount.toLocaleString()}`;
+}
+
+// ── Summary Cards ──────────────────────────────────────────────────────────
+function SummaryCards({ summary, currency }: { summary: Summary; currency: string }) {
+  return (
+    <div className="grid grid-cols-3 gap-3 mb-3 flex-shrink-0">
+      <div className="bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+          <TrendingUp className="w-4 h-4 text-emerald-600" />
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">总收入</p>
+          <p className="text-sm font-semibold text-emerald-600 font-mono">{fmtAmountShort(summary.totalIncome, currency)}</p>
+          <p className="text-[10px] text-slate-400">{summary.incomeCount} 笔</p>
+        </div>
+      </div>
+      <div className="bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+          <TrendingDown className="w-4 h-4 text-red-500" />
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">总支出</p>
+          <p className="text-sm font-semibold text-slate-800 font-mono">{fmtAmountShort(summary.totalExpense, currency)}</p>
+          <p className="text-[10px] text-slate-400">{summary.expenseCount} 笔</p>
+        </div>
+      </div>
+      <div className="bg-white rounded-lg border border-slate-200 p-3 flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${summary.netFlow >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+          <ArrowLeftRight className={`w-4 h-4 ${summary.netFlow >= 0 ? 'text-blue-600' : 'text-orange-500'}`} />
+        </div>
+        <div>
+          <p className="text-[10px] text-slate-400">净流入</p>
+          <p className={`text-sm font-semibold font-mono ${summary.netFlow >= 0 ? 'text-blue-600' : 'text-orange-500'}`}>
+            {summary.netFlow >= 0 ? '+' : ''}{fmtAmountShort(summary.netFlow, currency)}
+          </p>
+          <p className="text-[10px] text-slate-400">共 {summary.incomeCount + summary.expenseCount} 笔</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Import Modal ───────────────────────────────────────────────────────────
@@ -178,8 +234,6 @@ export default function ReconciliationPage() {
   }, [bankTab, typeFilter, page]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  // Reset page when filters change
   useEffect(() => { setPage(1); }, [bankTab, typeFilter]);
 
   async function deleteBatch(batchId: string) {
@@ -198,9 +252,8 @@ export default function ReconciliationPage() {
   }
 
   const totalPages = data ? Math.ceil(data.total / data.pageSize) : 1;
-
-  // Derive unique banks from batches for tabs
   const banks = data ? [...new Set(data.batches.map(b => b.bankName))] : [];
+  const activeCurrency = bankTab === 'all' ? 'IDR' : (data?.batches.find(b => b.bankName === bankTab)?.currency ?? 'IDR');
 
   return (
     <div className="flex flex-col h-full text-[12px] bg-slate-50 p-4 overflow-hidden">
@@ -226,6 +279,9 @@ export default function ReconciliationPage() {
         </div>
       </div>
 
+      {/* Summary Cards */}
+      {data?.summary && <SummaryCards summary={data.summary} currency={activeCurrency} />}
+
       {/* Import Batches Panel */}
       {showBatches && (
         <div className="mb-3 bg-white rounded-lg border border-slate-200 p-3 flex-shrink-0">
@@ -241,6 +297,7 @@ export default function ReconciliationPage() {
                       <span className="text-slate-500 truncate max-w-[200px]">{b.fileName}</span>
                       <span className="text-slate-400">{b.rowCount} 条</span>
                       <span className="text-slate-400">{fmtDate(b.createdAt)}</span>
+                      {b.uploader && <span className="text-slate-400">by {b.uploader.name}</span>}
                     </div>
                     <button
                       onClick={() => deleteBatch(b.id)}
@@ -256,7 +313,6 @@ export default function ReconciliationPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-2 mb-3 flex-shrink-0">
-        {/* Bank tabs */}
         <div className="flex items-center bg-white border border-slate-200 rounded-md overflow-hidden h-8">
           {['all', ...banks].map(b => (
             <button key={b}
@@ -269,7 +325,6 @@ export default function ReconciliationPage() {
           ))}
         </div>
 
-        {/* Type filter */}
         <div className="flex items-center bg-white border border-slate-200 rounded-md overflow-hidden h-8">
           {[['all', '全部'], ['INCOME', '收入'], ['EXPENSE', '支出']].map(([v, label]) => (
             <button key={v}
@@ -297,21 +352,22 @@ export default function ReconciliationPage() {
                 <th className="py-2 px-3 font-medium text-slate-500">参考号</th>
                 <th className="py-2 px-3 font-medium text-slate-500 text-right">金额</th>
                 <th className="py-2 px-3 font-medium text-slate-500 text-right">余额</th>
+                <th className="py-2 px-3 font-medium text-slate-500">上传人</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading
                 ? Array.from({ length: 10 }).map((_, i) => (
                     <tr key={i} className="animate-pulse">
-                      {Array.from({ length: 6 }).map((_, j) => (
+                      {Array.from({ length: 7 }).map((_, j) => (
                         <td key={j} className="py-2 px-3"><div className="h-3 bg-slate-100 rounded w-24" /></td>
                       ))}
                     </tr>
                   ))
                 : !data?.rows.length
-                  ? <tr><td colSpan={6} className="py-16 text-center text-slate-400">暂无流水数据，请先导入</td></tr>
+                  ? <tr><td colSpan={7} className="py-16 text-center text-slate-400">暂无流水数据，请先导入</td></tr>
                   : data.rows.map(row => (
-                      <tr key={row.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-1.5 px-3 font-mono text-slate-600">{fmtDate(row.transactionDate)}</td>
                         <td className="py-1.5 px-3">
                           <div className="flex flex-col">
@@ -323,7 +379,9 @@ export default function ReconciliationPage() {
                           <p className="truncate text-slate-600" title={row.description}>{row.description}</p>
                         </td>
                         <td className="py-1.5 px-3 font-mono text-[11px] text-slate-400">
-                          {row.reference ? <span className="truncate max-w-[100px] block" title={row.reference}>{row.reference}</span> : '—'}
+                          {row.reference
+                            ? <span className="truncate max-w-[100px] block" title={row.reference}>{row.reference}</span>
+                            : '—'}
                         </td>
                         <td className="py-1.5 px-3 text-right">
                           <span className={`font-mono font-medium ${row.type === 'INCOME' ? 'text-emerald-600' : 'text-slate-800'}`}>
@@ -332,6 +390,9 @@ export default function ReconciliationPage() {
                         </td>
                         <td className="py-1.5 px-3 text-right font-mono text-slate-400">
                           {row.balance != null ? fmtAmount(row.balance, row.currency) : '—'}
+                        </td>
+                        <td className="py-1.5 px-3 text-slate-400">
+                          {row.uploader?.name ?? '—'}
                         </td>
                       </tr>
                     ))}

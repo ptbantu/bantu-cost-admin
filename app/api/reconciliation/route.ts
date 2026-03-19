@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     ...(type ? { type: type as 'INCOME' | 'EXPENSE' } : {}),
   };
 
-  const [total, rows, batches] = await Promise.all([
+  const [total, rows, batches, summary] = await Promise.all([
     prisma.bank_transactions.count({ where }),
     prisma.bank_transactions.findMany({
       where,
@@ -27,17 +27,43 @@ export async function GET(req: Request) {
         id: true, bankName: true, currency: true, accountName: true,
         transactionDate: true, description: true, amount: true,
         type: true, balance: true, reference: true, importBatchId: true,
+        uploader: { select: { name: true } },
       },
     }),
     prisma.import_batches.findMany({
       where: { organizationId: ORG_ID },
       orderBy: { createdAt: 'desc' },
       take: 20,
-      select: { id: true, bankName: true, currency: true, fileName: true, rowCount: true, createdAt: true },
+      select: {
+        id: true, bankName: true, currency: true, fileName: true,
+        rowCount: true, createdAt: true,
+        uploader: { select: { name: true } },
+      },
+    }),
+    // Summary aggregates
+    prisma.bank_transactions.groupBy({
+      by: ['type'],
+      where: { organizationId: ORG_ID, ...(bankName ? { bankName } : {}) },
+      _sum: { amount: true },
+      _count: true,
     }),
   ]);
 
-  return NextResponse.json({ total, rows, batches, page, pageSize });
+  const incomeRow = summary.find(r => r.type === 'INCOME');
+  const expenseRow = summary.find(r => r.type === 'EXPENSE');
+  const totalIncome = incomeRow?._sum.amount ?? 0;
+  const totalExpense = expenseRow?._sum.amount ?? 0;
+
+  return NextResponse.json({
+    total, rows, batches, page, pageSize,
+    summary: {
+      totalIncome,
+      totalExpense,
+      netFlow: totalIncome - totalExpense,
+      incomeCount: incomeRow?._count ?? 0,
+      expenseCount: expenseRow?._count ?? 0,
+    },
+  });
 }
 
 export async function DELETE(req: Request) {
