@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, RefreshCw, MoreHorizontal, X, Loader2, Bot, Send, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  Search, Plus, RefreshCw, X, Loader2, Bot, Send,
+  CheckCircle2, XCircle, Copy, Eye, EyeOff, Settings, MoreHorizontal
+} from 'lucide-react';
 
 interface WecomBot {
   id: string;
@@ -18,10 +21,37 @@ function maskUrl(url: string) {
   try {
     const u = new URL(url);
     const key = u.searchParams.get('key') ?? '';
-    return `${u.origin}/...?key=${key.slice(0, 8)}***`;
+    return `https://qyapi.weixin.qq.com/...?key=${key.slice(0, 4)}****${key.slice(-4)}`;
   } catch {
-    return url.slice(0, 30) + '***';
+    return url.slice(0, 20) + '****';
   }
+}
+
+function StatusDot({ active, testResult }: { active: boolean; testResult?: 'ok' | 'fail' }) {
+  if (!active) return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-slate-300" />
+      <span className="text-[11px] text-slate-400">停用</span>
+    </span>
+  );
+  if (testResult === 'fail') return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-red-500" />
+      <span className="text-[11px] text-red-500">推送失败</span>
+    </span>
+  );
+  if (testResult === 'ok') return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+      <span className="text-[11px] text-emerald-600">正常</span>
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span className="text-[11px] text-emerald-600">启用中</span>
+    </span>
+  );
 }
 
 export default function WecomBotsPage() {
@@ -35,6 +65,8 @@ export default function WecomBotsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, 'ok' | 'fail'>>({});
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -122,11 +154,20 @@ export default function WecomBotsPage() {
     } finally { setTestingId(null); }
   };
 
+  const handleCopy = (bot: WecomBot) => {
+    navigator.clipboard.writeText(bot.webhookUrl);
+    setCopiedId(bot.id);
+    setTimeout(() => setCopiedId(null), 2000);
+    showToast('已复制 Webhook 地址');
+  };
+
   const filtered = bots.filter(b =>
     !search ||
     b.name.toLowerCase().includes(search.toLowerCase()) ||
     (b.description ?? '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const activeCount = bots.filter(b => b.isActive).length;
 
   return (
     <div
@@ -166,74 +207,61 @@ export default function WecomBotsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="flex-1 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
-            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
-              <tr>
-                <th className="py-2 px-3 font-medium text-slate-500 min-w-[180px]">机器人名称</th>
-                <th className="py-2 px-3 font-medium text-slate-500 min-w-[260px]">Webhook 地址</th>
-                <th className="py-2 px-3 font-medium text-slate-500 min-w-[180px]">备注</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-20">状态</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-28">创建时间</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-24 text-center">测试推送</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-12 text-center">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                  加载中...
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center text-slate-400">
-                  <Bot className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  {search ? '未找到匹配的机器人' : '暂无机器人，点击右上角新增'}
-                </td></tr>
-              ) : filtered.map(bot => (
-                <tr key={bot.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                  <td className="py-2 px-3">
-                    <div className="flex items-center space-x-2">
-                      <Bot className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                      <span className="font-medium text-slate-900">{bot.name}</span>
+      {/* Stats bar */}
+      <div className="grid grid-cols-3 gap-3 flex-shrink-0">
+        {[
+          { label: '机器人总数', value: bots.length, color: 'text-slate-700' },
+          { label: '已启用', value: activeCount, color: 'text-emerald-600' },
+          { label: '已停用', value: bots.length - activeCount, color: 'text-slate-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-white rounded-lg border border-slate-200 px-4 py-2.5 flex items-center justify-between shadow-sm">
+            <span className="text-slate-500">{s.label}</span>
+            <span className={`text-lg font-semibold ${s.color}`}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Cards */}
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        {loading ? (
+          <div className="flex items-center justify-center h-40 text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-40 text-slate-400">
+            <Bot className="w-8 h-8 mb-2 text-slate-300" />
+            {search ? '未找到匹配的机器人' : '暂无机器人，点击右上角新增'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pb-2">
+            {filtered.map(bot => (
+              <div
+                key={bot.id}
+                className={`bg-white rounded-lg border shadow-sm flex flex-col transition-all ${bot.isActive ? 'border-slate-200' : 'border-slate-200 opacity-60'}`}
+              >
+                {/* Card Header */}
+                <div className="flex items-start justify-between px-4 pt-3 pb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bot.isActive ? 'bg-emerald-50' : 'bg-slate-100'}`}>
+                      <Bot className={`w-4 h-4 ${bot.isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
                     </div>
-                  </td>
-                  <td className="py-2 px-3 font-mono text-[11px] text-slate-500">{maskUrl(bot.webhookUrl)}</td>
-                  <td className="py-2 px-3 text-slate-500">{bot.description || <span className="text-slate-300">—</span>}</td>
-                  <td className="py-2 px-3">
-                    {bot.isActive
-                      ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">启用</span>
-                      : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-500 border border-slate-200/60">停用</span>
-                    }
-                  </td>
-                  <td className="py-2 px-3 text-slate-500 text-[11px] font-mono">
-                    {new Date(bot.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <button
-                      onClick={() => handleTest(bot.id)}
-                      disabled={testingId === bot.id || !bot.isActive}
-                      className="inline-flex items-center h-6 px-2 rounded text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200/60 hover:bg-blue-100 transition-colors disabled:opacity-40"
-                    >
-                      {testingId === bot.id ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : testResult[bot.id] === 'ok' ? <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        : testResult[bot.id] === 'fail' ? <XCircle className="w-3 h-3 text-red-500" />
-                        : <Send className="w-3 h-3" />}
-                      <span className="ml-1">测试</span>
-                    </button>
-                  </td>
-                  <td className="py-2 px-3 text-center relative" onClick={e => e.stopPropagation()}>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900 truncate">{bot.name}</p>
+                      <StatusDot active={bot.isActive} testResult={testResult[bot.id]} />
+                    </div>
+                  </div>
+                  <div className="relative flex-shrink-0 ml-2" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => setOpenMenuId(openMenuId === bot.id ? null : bot.id)}
-                      className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-200 transition-colors focus:outline-none"
+                      className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 transition-colors"
                     >
-                      <MoreHorizontal className="w-3.5 h-3.5" />
+                      <MoreHorizontal className="w-4 h-4" />
                     </button>
                     {openMenuId === bot.id && (
-                      <div className="absolute right-8 top-1/2 -translate-y-1/2 w-32 bg-white border border-slate-200 shadow-lg rounded-md py-1 z-40">
-                        <button onClick={() => openEdit(bot)} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors">编辑</button>
+                      <div className="absolute right-0 top-7 w-32 bg-white border border-slate-200 shadow-lg rounded-md py-1 z-40">
+                        <button onClick={() => openEdit(bot)} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-2">
+                          <Settings className="w-3 h-3" />编辑
+                        </button>
                         <button onClick={() => handleToggle(bot)} className="w-full text-left px-3 py-1.5 hover:bg-slate-50 text-slate-700 transition-colors">
                           {bot.isActive ? '停用' : '启用'}
                         </button>
@@ -241,17 +269,54 @@ export default function WecomBotsPage() {
                         <button onClick={() => handleDelete(bot.id)} className="w-full text-left px-3 py-1.5 hover:bg-red-50 text-red-600 transition-colors">删除</button>
                       </div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
 
-        {/* Footer count */}
-        {!loading && (
-          <div className="px-3 py-2 border-t border-slate-100 text-[11px] text-slate-400 flex-shrink-0">
-            共 {filtered.length} 个机器人{search ? `（已筛选，共 ${bots.length} 个）` : ''}
+                {/* Description */}
+                <div className="px-4 pb-2 min-h-[28px]">
+                  <p className="text-slate-500 text-[11px] line-clamp-2">{bot.description || <span className="text-slate-300 italic">暂无备注</span>}</p>
+                </div>
+
+                {/* Webhook URL */}
+                <div className="mx-4 mb-3 bg-slate-50 rounded-md px-2.5 py-1.5 flex items-center gap-1.5 border border-slate-100">
+                  <span className="font-mono text-[10px] text-slate-500 flex-1 truncate">
+                    {revealedId === bot.id ? bot.webhookUrl : maskUrl(bot.webhookUrl)}
+                  </span>
+                  <button
+                    onClick={() => setRevealedId(revealedId === bot.id ? null : bot.id)}
+                    className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
+                    title={revealedId === bot.id ? '隐藏' : '显示完整地址'}
+                  >
+                    {revealedId === bot.id ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
+                  <button
+                    onClick={() => handleCopy(bot)}
+                    className="p-0.5 text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
+                    title="复制"
+                  >
+                    {copiedId === bot.id ? <CheckCircle2 className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+
+                {/* Card Footer */}
+                <div className="px-4 pb-3 flex items-center justify-between border-t border-slate-100 pt-2.5">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {new Date(bot.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })} 创建
+                  </span>
+                  <button
+                    onClick={() => handleTest(bot.id)}
+                    disabled={testingId === bot.id || !bot.isActive}
+                    className="inline-flex items-center h-6 px-2.5 rounded text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-200/60 hover:bg-blue-100 transition-colors disabled:opacity-40"
+                  >
+                    {testingId === bot.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                      : testResult[bot.id] === 'ok' ? <CheckCircle2 className="w-3 h-3 text-emerald-500 mr-1" />
+                      : testResult[bot.id] === 'fail' ? <XCircle className="w-3 h-3 text-red-500 mr-1" />
+                      : <Send className="w-3 h-3 mr-1" />}
+                    测试推送
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
