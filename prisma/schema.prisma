@@ -603,6 +603,7 @@ model organizations {
   products           Product[]
   user_organizations user_organizations[]
   vendors            vendors[]
+  wecom_bots         wecom_bots[]
 }
 
 model permissions {
@@ -797,6 +798,22 @@ model visa_types {
 model wechat_group_sequences {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
+}
+
+model wecom_bots {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  webhookUrl     String
+  isActive       Boolean       @default(true)
+  description    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   organizations @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("wecom_bots")
 }
 
 enum VendorStatus {
