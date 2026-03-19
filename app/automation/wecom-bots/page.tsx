@@ -126,8 +126,7 @@ export default function WecomBotsPage() {
       webhookUrl: bot.webhookUrl,
       description: bot.description ?? '',
       businessModule: bot.businessModule ?? '',
-      triggerScenes: bot.triggerScenes ?? [],
-      isActive: bot.isActive,
+      triggerScenes: bot.triggerScenes ?? [],      isActive: bot.isActive,
     });
     setOpenMenuId(null);
     setIsSheetOpen(true);
@@ -325,9 +324,9 @@ export default function WecomBotsPage() {
                     </span>
                   )}
                   <p className="text-slate-500 text-[11px] line-clamp-2">{bot.description || <span className="text-slate-300 italic">暂无备注</span>}</p>
-                  {bot.triggerScenes.length > 0 && (
+                  {(bot.triggerScenes ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1 pt-0.5">
-                      {bot.triggerScenes.map(s => (
+                      {(bot.triggerScenes ?? []).map(s => (
                         <span key={s} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-500 border border-slate-200/60">
                           {TRIGGER_SCENES.find(t => t.value === s)?.label ?? s}
                         </span>
