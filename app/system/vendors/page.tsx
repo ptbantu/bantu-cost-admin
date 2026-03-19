@@ -94,12 +94,13 @@ export default function VendorsPage() {
       '状态': statusLabel[v.status],
       '联系人': v.contactName ?? '',
       '电话': v.phone ?? '',
-      '邮箱': v.email ?? '',
       '微信': v.wechat ?? '',
+      '邮箱': v.email ?? '',
       '开户行': v.bankName ?? '',
       '银行账号': v.bankAccount ?? '',
       '账户户名': v.accountHolder ?? '',
       '税号(NPWP)': v.taxId ?? '',
+      '入库时间': new Date(v.createdAt).toLocaleDateString('zh-CN'),
       '累计已支付(IDR)': v.totalPaid,
       '备注': v.notes ?? '',
     }));
@@ -294,11 +295,14 @@ export default function VendorsPage() {
             <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10">
               <tr>
                 <th className="py-2 px-3 font-medium text-slate-500 w-32">供应商编号</th>
-                <th className="py-2 px-3 font-medium text-slate-500">供应商名称</th>
+                <th className="py-2 px-3 font-medium text-slate-500 min-w-[140px]">供应商名称</th>
                 <th className="py-2 px-3 font-medium text-slate-500 w-28">分类</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-40">联系人</th>
-                <th className="py-2 px-3 font-medium text-slate-500 w-40">收款银行</th>
+                <th className="py-2 px-3 font-medium text-slate-500 w-36">联系人 / 电话</th>
+                <th className="py-2 px-3 font-medium text-slate-500 w-36">微信 / 邮箱</th>
+                <th className="py-2 px-3 font-medium text-slate-500 w-44">收款银行 / 账号</th>
+                <th className="py-2 px-3 font-medium text-slate-500 w-36">账户户名 / 税号</th>
                 <th className="py-2 px-3 font-medium text-slate-500 w-24">状态</th>
+                <th className="py-2 px-3 font-medium text-slate-500 w-28">入库时间</th>
                 <th className="py-2 px-3 font-medium text-slate-500 text-right w-40">累计已支付</th>
                 <th className="py-2 px-3 font-medium text-slate-500 w-12 text-center">操作</th>
               </tr>
@@ -306,14 +310,14 @@ export default function VendorsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">
+                  <td colSpan={11} className="py-16 text-center text-slate-400">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                     加载中...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-slate-400">暂无供应商数据</td>
+                  <td colSpan={11} className="py-16 text-center text-slate-400">暂无供应商数据</td>
                 </tr>
               ) : filtered.map(vendor => (
                 <tr key={vendor.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
@@ -326,12 +330,21 @@ export default function VendorsPage() {
                       </span>
                     )}
                   </td>
+                  {/* 联系人 / 电话 */}
                   <td className="py-2 px-3">
                     <div className="flex flex-col space-y-0.5">
                       <span className="text-slate-700">{vendor.contactName ?? '—'}</span>
                       {vendor.phone && <span className="text-slate-400 font-mono text-[10px]">{vendor.phone}</span>}
                     </div>
                   </td>
+                  {/* 微信 / 邮箱 */}
+                  <td className="py-2 px-3">
+                    <div className="flex flex-col space-y-0.5">
+                      {vendor.wechat ? <span className="text-slate-700">{vendor.wechat}</span> : <span className="text-slate-300">—</span>}
+                      {vendor.email && <span className="text-slate-400 text-[10px] truncate max-w-[130px]">{vendor.email}</span>}
+                    </div>
+                  </td>
+                  {/* 收款银行 / 账号 */}
                   <td className="py-2 px-3">
                     {vendor.bankName ? (
                       <div className="flex flex-col space-y-0.5">
@@ -340,10 +353,21 @@ export default function VendorsPage() {
                       </div>
                     ) : <span className="text-slate-300">—</span>}
                   </td>
+                  {/* 账户户名 / 税号 */}
+                  <td className="py-2 px-3">
+                    <div className="flex flex-col space-y-0.5">
+                      {vendor.accountHolder ? <span className="text-slate-700">{vendor.accountHolder}</span> : <span className="text-slate-300">—</span>}
+                      {vendor.taxId && <span className="text-slate-400 font-mono text-[10px]">{vendor.taxId}</span>}
+                    </div>
+                  </td>
                   <td className="py-2 px-3">
                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${statusStyle[vendor.status]}`}>
                       {statusLabel[vendor.status]}
                     </span>
+                  </td>
+                  {/* 入库时间 */}
+                  <td className="py-2 px-3 text-slate-500 text-[11px] font-mono">
+                    {new Date(vendor.createdAt).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
                   </td>
                   <td className="py-2 px-3 text-right font-mono font-medium text-slate-800">
                     {formatIDR(vendor.totalPaid)}
