@@ -604,6 +604,8 @@ model organizations {
   user_organizations user_organizations[]
   vendors            vendors[]
   wecom_bots         wecom_bots[]
+  import_batches     import_batches[]
+  bank_transactions  bank_transactions[]
 }
 
 model permissions {
@@ -967,4 +969,53 @@ enum DocType {
   PDF
   FILETEXT
   FILE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model import_batches {
+  id             String              @id @default(cuid())
+  organizationId String
+  bankName       String
+  currency       String
+  fileName       String
+  fileUrl        String
+  rowCount       Int
+  importedBy     String?
+  createdAt      DateTime            @default(now())
+  organization   organizations       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions   bank_transactions[]
+
+  @@index([organizationId])
+  @@map("import_batches")
+}
+
+model bank_transactions {
+  id              String          @id @default(cuid())
+  organizationId  String
+  bankName        String
+  accountName     String?
+  accountNumber   String?
+  currency        String
+  transactionDate DateTime
+  description     String
+  amount          Float
+  type            TransactionType
+  balance         Float?
+  reference       String?
+  rawText         String?
+  importBatchId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  organization    organizations   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  import_batch    import_batches? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([transactionDate])
+  @@index([bankName])
+  @@index([importBatchId])
+  @@map("bank_transactions")
 }
